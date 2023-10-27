@@ -90,7 +90,7 @@ run;
 ods graphics on;
 
 proc logistic data=mylab.Data alpha=0.05 plots=(oddsratio);
-	class &cat; / param=ref; /* Spécifier les variables catégorielles */
+	class &cat. / param=ref; /* Spécifier les variables catégorielles */
 	model &Model. /clodds=pl LACKFIT
 	/* Sélection des variables */
 	selection=BIC slentry=0.05;
@@ -104,7 +104,7 @@ run;
 
 /* -------------------------------------------- | Analyse supplémentaire | -------------------------------------------- */
 
-/*Graphe croisé entre les domaines de formation et l'attrition des employés  */
+/* Graphique croisé entre les domaines de formation et l'attrition des employés  */
 proc freq data=mylab.data;
 	table EducationField*Attrition/ plots=freqplot(type=bar) outpct 
 		out=freq_Edu_Att;
@@ -115,7 +115,7 @@ proc sgplot data=freq_Edu_Att;
 	yaxis grid;
 run;
 
-/*Graphe croisé entre les domaines de formation et l'attrition des employés  */
+/* Graphique croisé entre les domaines de formation et l'attrition des employés  */
 proc freq data=mylab.data;
 	table EducationField*Attrition/ plots=freqplot(type=bar) outpct 
 		out=freq_Edu_Att;
@@ -126,7 +126,8 @@ proc sgplot data=freq_Edu_Att;
 	yaxis grid;
 run;
 
-/*graphes en plus*/
+
+/* Graphiques annexes */
 
 /*voyages en fonction de attrition*/
 
@@ -134,19 +135,19 @@ PROC GCHART DATA = mylab.Data ;
   VBAR attrition / DISCRETE GROUP = businesstravel ;
 RUN ;
 
-/*pro/perso*/
+/* Equilibre pro/perso */
 
 PROC GCHART DATA = mylab.Data ;
   VBAR attrition / DISCRETE GROUP = maritalstatus ;
 RUN ;
 
-/*environnement de travail*/
+/* Environnement de travail */
 
 PROC GCHART DATA = mylab.Data ;
   VBAR attrition / DISCRETE GROUP = environmentsatisfaction ;
 RUN ;
 
-/*rotation des managers*/
+/* Rotation des managers */
 
 proc freq data=mylab.data;
 	table yearswithcurrmanager*Attrition/ plots=freqplot(type=bar) outpct 
@@ -158,7 +159,7 @@ proc sgplot data=freq_Edu_Att;
 	yaxis grid;
 run;
 
-/*last promotion*/
+/* Combien de temps après la dernière promotion */
 
 proc freq data=mylab.data;
 	table yearssincelastpromotion*Attrition/ plots=freqplot(type=bar) outpct 
@@ -171,7 +172,7 @@ proc sgplot data=freq_Edu_Att;
 run;
 
 
-/*mercenaires*/
+/* Profils type mercenaire*/
 
 proc freq data=mylab.data;
 	table numcompaniesworked*Attrition/ plots=freqplot(type=bar) outpct 
