@@ -1,0 +1,61 @@
+/*--------------------------------------------------*/
+/*--------------------------------------------------*/
+/* auteurs:
+/* GABAUT Garance */
+/* Brunet Alexandre */
+/* Saiz Edgar */
+/* Module - Modèles linéaires / SAS */
+/*--------------------------------------------------*/
+/*--------------------------------------------------*/
+/* Importer notre jeu de données */
+proc import datafile="/home/u62535389/travailPerso/data.csv" out=dataMusic 
+		Replace;
+run;
+
+/* Apercu de notre tables et des variables */
+proc contents data=dataMusic;
+run;
+
+/*-------------------------------------------------------------------- */
+/* 1ER PARTIE - LIENS ENTRE CAPACITE A DANSER ET VALENCE DE LA MUSIQUE */
+/*-------------------------------------------------------------------- */
+/*  Visualisation des données sous la forme d'un nuage de points  */
+Proc gplot data=dataMusic;
+	plot danceability*valence;
+	title 'Capacité à danser en fonction de la valence des musiques';
+
+	/* Etude la corrélation de Pearson des deux variables  */
+Proc corr data=dataMusic;
+	title 'Corrélation entre la capacité à danser et valence';
+	var danceability valence;
+
+	/* Regression lineaire simple entre capacité a danser et valence de la musique */
+Proc REG data=dataMusic;
+	title 
+		'Régression de la capacité à danser en fonction de la valence des musiques';
+	model danceability=valence;
+	run;
+
+	/*  Tester la normalité des variables  */
+proc univariate data=dataMusic normal;
+	var danceability valence;
+run;
+
+/*----------------------------------------------------------------------------------------- */
+/* 2EME PARTIE - LIENS ENTRE LA CAPACITE A DANSER, TEMPO, ENERGIE, ET LE DEBIT DE PAROLES   */
+/*----------------------------------------------------------------------------------------- */
+/* Test de normalité des variables */
+proc univariate data=dataMusic normal;
+	var energy tempo speechiness;
+run;
+
+/* correlation entre variables- test de Paerson   */
+proc corr data=dataMusic plots=(matrix (histogram)) plots(maxpoints=none);
+	var danceability energy tempo speechiness;
+	title 'Corrélation entre capacité de dancer, energie, tempo et speechiness';
+run;
+
+/* Regression  multiple  */
+proc reg data=dataMusic;
+	model danceability=energy tempo speechiness;
+	run;

@@ -1,0 +1,995 @@
+---
+documentclass: "compterendu"
+lang: true
+babel-lang: "french"
+geometry:
+  - left=2cm
+  - right=2cm
+  - top=2.5cm
+  - bottom=2.5cm
+title: "Les déterminants des logements sociaux en France"
+author: 
+  - Alexandre Brunet
+  - Garance Gabaut
+email: 
+  - alexandre.brunet@etudiant.univ-reims.fr
+  - garance.gabaut@etudiant.univ-reims.fr
+date: "`r format(Sys.time(), '%d %B %Y')`"
+abstract: "Aujourd'hui en France, on retrouve près de 5,3 millions de logements sociaux et 10 millions de locataires. À travers cette étude, on cherche à comprendre les différents potentiels déterminants de ces logements, que ce soit économiques, écologiques ou démographiques qui peuvent ou non expliquer la quantité et le prix des logements sociaux pour l'année 2019."
+keywords:
+  - Logements sociaux
+  - départements
+git: "https://github.com/pregnault/urcadown"
+database: "https://www.data.gouv.fr/fr/datasets/logements-et-logements-sociaux-dans-les-departements-1/"
+anac: "2022-2023"
+diplome: "Master M1 - Statistique pour l'Evaluation et la Prévision "
+module: "SEP 831"
+enseig: "Philippe Regnault"
+evaluation: "Compte-rendu d'analyse"
+coefficient: "50 \\%"
+output: 
+  bookdown::pdf_book:
+    citation_package: biblatex
+    template: template.tex
+    fig_caption: yes
+    keep_tex: yes
+    toc: yes
+biblatex: true
+bibliography: ProjetStatAppl.bib
+biblio-style : alphabetic
+link-citations: yes
+---
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+#Package 
+library("tidyverse")
+library("readr")
+library("ggplot2")
+library("gghalves")
+library("dplyr")
+library("tidyr")
+library("cowplot") #mettre 2 figures à coté
+library("stats")
+library("ggpubr")
+library('nortest')
+library('mvnormtest')
+library('moments')
+
+
+#Mise en forme de la data frame
+
+# Importation des données -------------------------------------------------
+dta <- read.csv("Logements.csv", header=T, sep=";", row.names = 1)
+
+#Transformation en variable numérique
+don <- as.data.frame(sapply(dta[,1:18], function(x) as.numeric(x)))
+
+#Configuration de la nouvelle table
+don$nom_region <- dta$nom_region
+rownames(don) <- rownames(dta)
+
+#On retire les données manquantes pour effectuer correctement
+#les tests qui le nécessitent
+don2 <- na.omit(don)
+
+```
+
+# Introduction
+
+    La situation économique de la France depuis les années 1970 ne cesse d'être perturbée, en particulier à la suite de la crise liée à la Covid-19. Au cours de cette dernière, de nombreux emplois se sont retrouvés sur le fil du rasoir et ont été contraints de s'interrompre pendant une assez longue période. Les conséquences de cette crise sont nombreuses : pénurie de certains produits, engendrant ainsi une augmentation générale des prix des produits du quotidien, mais aussi de l'énergie (électricité, carburant), particulièrement au cours de l'hiver 2022-2023. Aujourd'hui, une inquiétude globale existe autour du pouvoir d'achat des Français..
+
+    Il existe différentes alternatives pour permettre de limiter ses dépenses au quotidien. Par exemple, la mise en place du télétravail de façon plus régulière permet de limiter sa consommation de carburant. Également, pour des foyers plus en difficulté, il est possible de se loger dans des logements plus abordables : les logements sociaux. Ces logements sont construits avec l'aide de l'État et proposent des loyers plus abordables. Des conditions doivent néanmoins être respectées pour pouvoir en bénéficier, notamment un revenu maximal à ne pas dépasser. Cependant, les conditions peuvent être modifiées étant donné la démographie du pays. En effet, la population française ne cesse d'augmenter et est marquée par un solde migratoire assez important (un des pays européens qui a le plus fort solde migratoire pour la période 2010-2015).
+
+    On en vient donc à s'interroger sur la situation démographique et l'impact qu'elle a eu sur les prix des logements sociaux en France. D'ailleurs, on note en 2019 une différence de près de 1000 € net par mois sur le salaire moyen entre différentes régions de France. Ainsi, nous avons fait le choix de comparer les différentes régions françaises en nous demandant dans quelle mesure la réalité économique et démographique des différentes régions de la France peut influencer le nombre et la nature des logements sociaux
+
+# Impact de la démographie française sur le nombre, le prix et la nature des logements sociaux
+
+    Lorsque la question du logement est abordée, la démographie d'un pays est un facteur important à considérer. Il est donc pertinent de s'interroger sur l'impact de ces facteurs démographiques sur le nombre et sur les prix des logements sociaux. Dans un premier temps, nous examinerons s'il existe un lien entre l'âge des habitants et la répartition des logements sociaux. De même, nous étudierons si l'âge a une incidence sur les prix des logements. Ensuite, nous nous pencherons davantage sur la localisation géographique des logements sociaux ainsi que sur leur prix.
+
+Nous poursuivrons notre analyse en examinant la densité de population et le nombre de logements disponibles. Enfin, nous aborderons un sujet d'actualité important, à savoir l'écologie. Nous nous demanderons si une population plus jeune est plus sensible à la prise en compte de l'environnement dans le choix de leur logement.
+
+## Analyse de la répartion de la population selon l'âge
+
+Comme évoqué dans l'article de @renault_a_2022, les seniors semblent se diriger vers le sud de la France ou les zones côtières. Nous avons souhaité vérifier si nos données concordaient avec les études menées par Le Figaro. Pour cela, nous avons utilisé le logiciel Qgis, qui nous a permis de produire les trois cartes visibles sur les figures (\@ref(fig:60ans)), (\@ref(fig:jeune)) et (\@ref(fig:locLogSoc)).
+
+(ref:60ans) Proportion de personnes agées de 60 ans ou plus en 2019, en France, en fonction des départements de France. *Lecture* : Dans le département de l'Aube, il y a entre 22,3 et 27,5% de personnes de 60 ans et plus.
+
+```{r 60ans, fig.cap = "(ref:60ans)", out.width="70%", fig.align='center',echo=FALSE}
+knitr::include_graphics(path = "60ansetPlusc.png")
+```
+
+La figure (\@ref(fig:60ans)) nous permet de confirmer quelques propos de l'article : on constate en effet assez peu de personnes âgées dans les départements les plus dynamiques, comme ceux de la région Île-de-France. On observe également une forte concentration dans la diagonale du vide.
+
+Lorsqu'on met en relation cette carte avec celle de la figure (\@ref(fig:jeune)), on constate qu'elles sont assez complémentaires. Prenons l'exemple des départements situés en Île-de-France : on observe une forte concentration de jeunes et une très faible concentration de personnes de 60 ans et plus. À l'inverse, dans des départements tels que le Cantal, l'Aveyron ou même la Creuse, on note une importante concentration de personnes des 60 ans et plus contre une minorité de moins de 20 ans.
+
+(ref:jeune) Proportion de personnes agées de 20 ans ou moins en 2019, en France, en fonction des départements de France. *Lecture* : Dans le département de l'Aube, il y a entre 23,5 et 26,3% de personnes de moins de 20 ans.
+
+```{r jeune, fig.cap = "(ref:jeune)", out.width="70%", fig.align='center',echo=FALSE, }
+knitr::include_graphics(path = "20ansetMoinsc.png")
+```
+
+Notre objectif est de mettre en relation la répartition des logements sociaux avec celle des personnes en fonction de l'âge. Pour cela, nous avons produit une dernière carte, visible sur la figure (\@ref(fig:locLogSoc)), qui indique le taux de logements sociaux en fonction des départements.
+
+(ref:locLogSoc) Taux de logements sociaux en fonction des départements français en 2019. *Lecture* : Dans le département de l'Aisne, il y a entre 11,2 et 17,4% de logements sociaux.
+
+```{r locLogSoc, fig.cap = "(ref:locLogSoc)", out.width="70%", fig.align='center',echo=FALSE}
+knitr::include_graphics(path = "TauxLogementSociauxc.png")
+```
+
+    Après avoir comparé les figures (\@ref(fig:60ans)) et (\@ref(fig:jeune)) avec la figure (\@ref(fig:locLogSoc)), nous ne sommes pas en mesure d'établir un lien évident entre la répartition de la population en fonction de l'âge et la répartition des logements sociaux. En effet, la carte (\@ref(fig:locLogSoc)) montre une répartition relativement homogène sur le territoire, à l'exception de 4 départements.
+
+    Cependant, une hypothèse intéressante reste à vérifier : il semblerait exister un lien entre la répartition des personnes des 60 ans et plus et celle des personnes de moins de 20 ans. Cette hypothèse est renforcée par la figure (\@ref(fig:Pop20et60)). En effet, ce graphique montre un lien linéaire entre les deux populations.
+
+(ref:Pop20et60) Proportion de personnes agées de 20 ans ou moins en 2019, en France, en fonction de la proportion de personnes de 60 ans ou plus. *Lecture* : Pour 41% de moins de 20 ans dans un département, on retrouve 9% de plus de 60 ans.
+
+```{r Pop20et60,  fig.cap = "(ref:Pop20et60)",  echo=FALSE, fig.width = 5 ,fig.height=3}
+library(ggplot2)
+ggplot(don) +
+  aes(
+    x = population_de_moins_de_20_ans,
+    y = population_de_60_ans_et_plus
+  ) +
+  geom_point(shape = "cross", size = 2.6, colour = "#ED0404") +
+  labs(x = "Proportion de la population âgée de moins de 20 ans (%)",
+       y = "Proportion de la population âgée de 60 ans ou plus (%)") +
+  theme_bw()  +
+  theme(
+    axis.title.y = element_text(size = 7L),
+    axis.title.x = element_text(size = 11L),
+  )
+```
+
+    Nous avons confirmé cette hypothèse en effectuant un test de corrélation entre les données de la répartition des plus des 60 ans et plus et celles des moins de 20 ans, qui a révélé une forte corrélation négative. Ainsi, nous pouvons conclure que ces deux populations sont bien inversement corrélées. Autrement dit, si l'une des populations augmente, l'autre diminue.
+
+    En somme, bien que la répartition des logements sociaux ne semble pas être directement liée à la répartition de la population en fonction de l'âge, il existe des liens intéressants entre la répartition des différentes générations.
+
+## Age et prix des logements sociaux
+
+    On s'interroge désormais sur l'existence d'un lien entre le prix moyen au $m ^2$ et la proportion de la population âgée de 60 ans et plus et de la proportion de la population âgée de moins de 20 ans. D'après la figure (\@ref(fig:ageVSprix)), les données semblent effectivement liées. En effet, une proportion élevée des moins de 20 ans semble entraîner un prix moyen au $m ^2$ élevé, tandis qu'on constate le contraire en regardant le prix en fonction du pourcentage de personnes de plus de 60 ans.
+
+    Nous avons effectué un test de corrélation pour vérifier ces observations. Nous avons constaté qu'il existe bien une corrélation négative entre le prix moyen et la proportion de la population âgée de 60 ans et plus, ce qui signifie que les départements dans lesquelles la population est plus âgée ont tendance à fixer un prix moyen au $m ^2$ moins élevé que les autres départements. Par ailleurs, nous avons également constaté qu'il existe une corrélation entre le taux de personnes âgées de moins de 20 ans et le prix moyen, mais cette corrélation est très faible, d'environ 0,38.
+
+(ref:ageVSprix) Prix moyen du loyer au $m ^2$ en fonction de l'âge de la population en 2019, en France. *Lecture*: Un département dans lequel environ 18% de la population est âgée de moins de 20 ans possède des logements sociaux avec un prix moyen fixé à 4,5 €/$m ^2$.
+
+```{r ageVSprix,  fig.cap = "(ref:ageVSprix)",  echo=FALSE, fig.width = 6 ,fig.height=3.5}
+
+p1 <- ggplot(don) +
+  aes(
+    x = population_de_moins_de_20_ans,
+    y = parc_social_loyer_moyen_en_eur_m2_mois
+  ) +
+  geom_point(shape = "cross", size = 2.25, colour = "#D61010") +
+  labs(
+    x = "Proportion de la population âgée de moins de 20 ans (%)",
+    y = "Prix moyen du loyer au mètre carré (€)"
+  ) +
+  theme_bw() +
+  theme(
+    axis.title.y = element_text(size = 10L),
+    axis.title.x = element_text(size = 7.3L)
+  )
+
+p2 <-ggplot(don) +
+  aes(
+    x = population_de_60_ans_et_plus,
+    y = parc_social_loyer_moyen_en_eur_m2_mois
+  ) +
+  geom_point(shape = "cross", size = 2.25, colour = "#D61010") +
+  labs(
+    x = "Proportion de la population âgée de 60 ans ou plus (%)",
+    y = "Prix moyen du loyer au mètre carré (€)"
+  ) +
+  theme_bw() +
+  theme(
+    axis.title.y = element_text(size = 10L),
+    axis.title.x = element_text(size = 7.5L)
+  )
+plot_grid(p1, p2, ncol = 2, align = "v")
+```
+
+## L'influence de la localisation des logements sociaux au regard de leur nombre et de la fixation de leur prix
+
+\ \ \ \ En théorie, plus un bien, ou service, est présent sur un marché, moins il vaut cher et inversement: "tout ce qui est rare est cher". En l'occurrence, nous nous attendons à ce que les régions qui proposent le moins de logements aient un prix au $m ^2$ plus élevé. Mais dans notre cas, il s'avère que le nombre de logements sociaux varie selon les régions elles-mêmes. En effet, l'Île-de-France est la région qui propose le plus de logements sociaux, suivie par les Hauts-de-France, alors que c'est l'Occitanie qui en propose le moins en moyenne. Ce qui pose déjà un problème, car la théorie que nous avons exposée au début nécessite de poser une hypothèse selon laquelle le nombre de logements est également réparti sur toute la zone étudiée (la France).
+
+\ \ \ \ Au niveau des prix moyens au $m ^2$, on observe également une forte dépendance à la région. Cela contredit également la théorie de base dans la mesure où c'est dans l'Île-de-France que l'on observe le prix moyen par $m ^2$ le plus élevé.
+
+## Densité de population et taux de logements sociaux
+
+\ \ \ \ On peut supposer que la densité de population est intimement liée au taux de logements sociaux. En effet, il semble cohérent de penser que plus la densité de population d'une région est élevée, plus le besoin de logements abordables se fera sentir. Il est donc raisonnable de penser que le taux de logements sociaux augmentera également.
+
+\ \ \ \  En examinant les données, on constate qu'il existe effectivement une corrélation entre ces deux variables. La corrélation est positive, ce qui signifie que plus la densité de population est élevée, plus le taux de logements sociaux l'est également. Cette corrélation s'explique par le fait que les zones urbaines denses sont souvent caractérisées par des prix de l'immobilier plus élevés, ce qui peut rendre l'accès au logement difficile pour les personnes à faibles revenus. Les logements sociaux peuvent donc constituer une solution pour répondre à ce besoin.
+
+
+## Les jeunes et l'environnement : une préoccupation grandissante en matière de logements ? 
+
+\ \ \ \ L'écologie est devenue une préoccupation majeure pour une part croissante de la population, notamment chez les jeunes. On a nottament été temoin de l'émergence du terme "éco-anxiété". Ce terme, désignant « l'ensemble des émotions ressenties en réaction aux bouleversements environnementaux actuels et futurs. » \footnote{Définition d'après Décathlon, https://engagements.decathlon.fr/quest-ce-que-leco-anxiete }, est témoin d'une angoisse globale. Il est donc légitime de s'attendre à une augmentation de la prise de conscience environnementale, en particulier chez les jeunes, qui sont souvent les plus sensibles à ces questions.
+
+\ \ \ \ Cependant, les résultats d'une étude sur la corrélation entre l'âge de la population et le nombre de logements énergivores dans les parcs sociaux ne confirment pas cette hypothèse. En effet, la corrélation entre une population jeune et la part de logements sociaux énergivores n'est que de 8%, ce qui signifie que les départements avec une population plus jeune ont tendance à avoir plus de logements sociaux énergivores. De même, la corrélation entre une population plus âgée et le nombre de logements énergivores dans les parcs sociaux est insignifiante. Ainsi, la proportion de personnes âgées dans un département n'affecte pas le nombre de logements sociaux ayant un impact énergétique important.
+
+\ \ \ \ Néanmoins, l'âge du parc social dans lequel se trouvent les logements sociaux est un facteur bien plus déterminant. En effet, la corrélation entre l'âge moyen des parcs sociaux et leur impact énergétique est de 37%. Autrement dit, une augmentation d'un an de l'âge moyen des parcs sociaux entraîne une augmentation de 37% de l'impact énergétique de ces logements.
+
+\ \ \ \ En conclusion, si l'âge de la population a une certaine influence sur l'impact énergétique des logements sociaux, celle-ci est limitée. L'âge du parc social est en revanche un facteur clé, qui doit être pris en compte dans toute stratégie visant à améliorer l'efficacité énergétique des logements sociaux.
+
+\newpage
+# L’équilibre démographique : un déterminant dans le taux de logements sociaux ?
+
+\ \ \ \ Le nombre de logements sociaux au sein d’une population est un enjeu majeur pour les politiques publiques car étroitement liées à la question de l’accès au logement pour les populations les plus défavorisées. C’est une des raisons pour laquelle il faut s’interroger sur les facteurs influençant le taux de logements sociaux en France. C’est un fait, il est nécessaire que le nombre de logements (sociaux ou non) disponibles suive la réalité démographique, au risque de ne plus pouvoir héberger correctement la population. Cette réalité peut être analysée grâce au solde naturel et au solde migratoire. La question principale ici est de savoir si l’équilibre entre les deux soldes impacte ou non le taux de logements sociaux en France.
+
+## Solde naturel et solde migratoire selon les régions
+
+\ \ \ \ On constate qu'il peut exister une différence significative entre le solde naturel et le solde migratoire selon les régions, mais pas toutes. Parmi celles qui ne présentent pas de différence, nous pouvons citer : l’Auvergne-Rhône-Alpes, la Provence-Alpes-Côte d'Azur, la Bretagne, la Normandie, le Centre-Val de Loire, la Corse, les Pays de la Loire et la Bourgogne-Franche-Comté.
+Les régions qui présentent une différence significative sont : les Hauts-de-France, le Grand Est, l’Île-de-France ; les DOM-TOM ; l’Occitanie et la Nouvelle-Aquitaine.
+
+## Est-ce qu’une différence significative entre les 2 soldes signifie un plus ou moins grand taux de logements sociaux ?
+
+
+\ \ \ \ Pour montrer qu’une différence entre les 2 soldes impacte ou non le taux de logements sociaux, nous avons décidé d’utiliser à la fois une région qui ne présente pas de différence entre ses soldes et une autre qui en présente une. En cela, nous allons utiliser la région de l’Auvergne-Rhône-Alpes et de la Nouvelle Aquitaine car ce sont les régions des deux groupes qui sont composés d’un plus grand nombre de départements.
+
+\ \ \ \ Finalement, si une région affiche une différence significative entre son solde naturel et son solde migratoire, il y a des chances pour que le taux de logements sociaux soit significativement différent de celui d’une région qui n’affiche pas une différence significative des soldes. Par exemple, la région Auvergne-Rhône-Alpes qui ne présente pas de différence de ses soldes, a en moyenne 14% de ses logements qui sont des logements sociaux, alors que la région Nouvelle-Aquitaine présente une différence significative entre ses soldes et a en moyenne 10% de ses logements sont des logements sociaux.
+ \newpage
+
+# Situation économique française face au nombre et au prix au $m ^2$ des logements sociaux
+
+\ \ \ \ Intéressons-nous maintenant à la situation économique du pays. Nous allons démontrer dans cette partie si la situation macroéconomique de la France en 2019 a impacté le prix des logements sociaux, ou plus exactement le prix du $m ^2$ des logements sociaux. Ainsi, nous avons étudié si le salaire net mensuel, le taux de pauvreté et le taux de chômage au 4e trimestre étaient indépendants dans la fixation du prix du $m ^2$ des logements sociaux.
+
+## Les salaires confrontés au loyer mensuel d'un $m ^2$ 
+
+\ \ \ \ Collectivement, nous pouvons penser que le prix d'un logement est plus élevé en fonction de sa localisation géographique. En général, les logements sont plus chers en Île-de-France que dans le Grand Est. Une des explications possibles serait que les salaires diffèrent selon les régions. C'est pour cela que nous avons regardé s'il existait réellement un lien entre le salaire net mensuel moyen des régions et le prix moyen du $m ^2$ des logements sociaux.
+
+\ \ \ \ Nous avons alors décelé une corrélation monotone significative à hauteur de 57,4 % entre le salaire net mensuel moyen des régions et le prix moyen du $m ^2$ des logements sociaux. Autrement dit, lorsque le salaire net mensuel moyen augmente, le prix moyen du $m ^2$ des logements sociaux connaît une augmentation de 57,4 % de l'augmentation qu'a connue le salaire net mensuel moyen.
+
+## Taux de pauvreté
+
+Le taux de pauvreté est un indicateur statistique qui indique la proportion de personnes dont le revenu est inférieur à un certain seuil considéré comme insuffisant pour subvenir à leurs besoins de base. En France, le seuil de pauvreté est défini comme étant égal à 60 % du niveau de vie \footnote{Le niveau de vie correspond au revenu disponible par unité de consommation, qui tient compte de la taille et de la composition du ménage, après déduction des impôts et des transferts sociaux (prestations sociales, allocations familiales, etc.).} médian de la population française.
+
+\ \ \ \ Ainsi, le taux de pauvreté est défini en fonction du niveau de vie de la population. De plus, l'accès au logement est pris en compte dans le calcul du niveau de vie. C'est pourquoi nous allons voir s'il existe une corrélation entre le taux de pauvreté et le prix moyen du $m ^2$ des logements sociaux. En effet, nous pouvons penser que plus le taux de pauvreté est élevé, moins le prix au $m ^2$ est faible pour diverses raisons, dont une selon laquelle l'État doit s'assurer une facilité d'accès au logement. Cependant, aucune corrélation significative n'a été observée entre le taux de pauvreté et le prix moyen du $m ^2$ des logements sociaux.
+
+## Le taux de chômage et le prix du $m ^2$
+
+\ \ \ \ Le taux de chômage est un indicateur économique qui mesure la proportion de la population active en âge de travailler qui n'a pas d'emploi. Les personnes sans emploi ne perçoivent donc pas de salaire, ce qui impacte à la baisse leur revenu disponible. Nous pourrions alors penser que le prix du $m ^2$ des logements sociaux pourrait s'adapter à la situation de chômage en diminuant. Cependant, Nous n'avons pas trouvé de corrélation significative entre le taux de chômage et le prix moyen du $m ^2$ des logements sociaux.
+
+\ \ \ \ Pour conclure cette partie, il semble que le prix des logements ne soit pas en phase avec la situation économique du pays. Le salaire net mensuel semble être le seul facteur économique présentant une corrélation (partielle) avec le prix des logements, le taux de pauvreté et le taux de chômage n'en montrent aucun.
+
+\newpage 
+
+# Conclusion 
+
+\ \ \ \ Nous pouvons donc conclure que le nombre de logements et leur prix moyen du mètre carré sont dépendants de la démographie française (en incluant le solde migratoire et naturel). De plus, nous avons vu que le taux de logements sociaux énergivores est d’autant plus élevé que l’âge des parcs sociaux est élevé, alors que nous pensions que c’était l’âge des occupants qui expliquait la consommation énergétique des logements sociaux. La démographie explique mieux le nombre et la part des logements sociaux que l’économie du pays (hormis le salaire net moyen) n’explique la fixation du prix moyen du mètre carré des logements sociaux.
+
+
+\newpage
+
+# (APPENDIX) Annexes {-}
+
+# Annexe - partie 2
+
+## Corrélation entre la proportion de moins de 20 ans et la proportion des 60 ans et plus par département.
+
+    La figure (\@ref(fig:Pop20et60)) suggère une potentielle corrélation négative entre ses deux variables. Nous allons l'étudier afin de confirmer ou non cette hypothèse.
+
+```{r ,  echo=FALSE}
+# nuage de points : figure partie 1a 
+# on suppose qu'il existe un lien linéaire 
+
+dat <- cbind(don$population_de_moins_de_20_ans, don$population_de_60_ans_et_plus)
+# On teste la normalité des couples d’observations
+mvnormtest::mshapiro.test(t(dat))
+
+```
+
+La p-value du test de Shapiro-Wilk est inférieure au seuil de 5%. Par conséquent, on rejette l'hypothèse nulle selon laquelle les données suivent une distribution normale. On doit alors utiliser un test de corrélation de Spearman, plutôt qu'un test de corrélation de Pearson.
+
+```{r, echo = FALSE,  warning=FALSE }
+
+# correlation de Spearman
+cor <- cor.test(don$population_de_moins_de_20_ans,don$population_de_60_ans_et_plus, method= 'spearman')
+cor
+
+```
+
+ Le test de Spearman a une p-value inferieure à nouveau au seuil de significativité de 5%. Nous pouvons donc conclure à l'existence d'une assez forte corrélation négative entre ces deux variables, comme en témoignent le coefficient de corrélation rho de Spearman qui est négatif.
+
+## Corrélation entre la proportion d'un population d'un certainâge et le prix moyen au $m ^2$
+
+    La figure (\@ref(fig:ageVSprix)) suggère qu'il existe un lien entre la proportion d'avoir moins de 20 ans ou plus de 60 ans et le prix moyen au $m ^2$ .
+
+```{r ,  echo=FALSE}
+# nuage de points : figure partie 1a 
+# on suppose qu'il existe un lien linéaire 
+
+dat <- cbind(don$population_de_moins_de_20_ans, don$parc_social_loyer_moyen_en_eur_m2_mois)
+# On teste la normalité du couple d’observations
+mvnormtest::mshapiro.test(t(dat))
+
+
+dat <- cbind(don$population_de_60_ans_et_plus, don$parc_social_loyer_moyen_en_eur_m2_mois)
+mvnormtest::mshapiro.test(t(dat))
+
+```
+
+Les p-values des deux testes de Shapiro-Wilk sont inférieures au seuil de 5%. Par conséquent, on rejette l'hypothèse nulle selon laquelle les données suivent une distribution normale. Nous ne pouvons donc pas effectuer le teste de Pearson, nous allons exécuter le test de Spearman.
+
+Regardons d'abord les résultats avec la proportion de personnes de moins de 20 ans par département.
+
+```{r, echo = FALSE,  warning=FALSE }
+
+# correlation avec variable population_de_moins_de_20_ans
+cor20ans <- cor.test(don$population_de_moins_de_20_ans,don$parc_social_loyer_moyen_en_eur_m2_mois, method= 'spearman')
+cor20ans
+
+
+```
+
+Les p-value est inférieure au seuil de significativité de 5%. On accepte donc l'hypothèse alternative selon laquelle il y a une corrélation significative entre les deux. De plus, le Rho de Spearman est positif,on conclut donc qu'il existe une corrélation positive entre la proportion de la population ayant moins de 20 ans et le prix moyen du loyer au $m ^2$ par département.
+
+```{r, echo = FALSE,  warning=FALSE }
+# correlation avec variable  population_de_60_ans_et_plus
+cor60ans <- cor.test(don$parc_social_loyer_moyen_en_eur_m2_mois,don$population_de_60_ans_et_plus, method= 'spearman')
+cor60ans
+```
+
+Les conclusions sont les mêmes que celles annoncées pour la variable "taux de personnes de moins de 20 ans". Il convient de préciser que le Rho de Spearman est supérieure pour la variable "taux de personnes de 60 ans et plus" comparé à celle obtenue avec la variable "taux de personnes de moins de 20 ans". Cela signifie que la corrélation entre le prix moyen du $m ^2$ et la proportion de la popluation âgée de 60 ans et plus est plus forte que celle avec la proportion de la population âgée de moins de 20 ans.
+
+## Etude du lien entre le prix moyen et le nombre de logements
+
+Dans un premier, nous avons regardé le nombre de logements sociaux, en groupant les données par régions.
+
+(ref:dscrNbrLog) Distribution du nombre de logements sociaux pour chaque région, et représentation de la moyenne du nombre de logements sociaux pour chaque région.
+
+```{r dscrNbrLog, fig.cap='(ref:dscrNbrLog)', echo=FALSE,  fig.width = 4.5}
+
+MoyLog <- DescTools::Desc(parc_social_nombre_de_logements ~ nom_region, data = don2, plotit = TRUE)
+MoyLog
+
+```
+
+```{r, echo=FALSE}
+maxMoyNbLog <- max(MoyLog$`parc_social_nombre_de_logements ~ nom_region`$mean)
+minMoyNbLog <- min(MoyLog$`parc_social_nombre_de_logements ~ nom_region`$mean)
+```
+
+On constate que la moyenne du nombre de logements sociaux varie énormément d'une région à une autre. Le maximum est atteint, sans surprise, en Île-de-France, avec une moyenne de `r options(scipen=999, digits=1)` `r maxMoyNbLog` logements sociaux par département dans cette région. Le minimum de nombre de logements sociaux par département se trouve dans la région de l'Occitanie, avec `r minMoyNbLog` logements sociaux en moyenne par département. On constate un écart assez important entre le minimum et le maximum, mais on remarque aussi sur le graphique (\@ref(fig:dscrNbrLog)) que deux valeurs se distinguent de la tendance générale : la plupart des moyennes se trouvent en dessous de 6 000 logements sociaux en moyenne par région, à l'exception de deux, qui dépassent les 110 000. Regardons désormais la distribution de ses données.
+
+(ref:BaMNbrLog) Distribution du nombre de logements sociaux pour chaque région.
+
+```{r BaMNbrLog, fig.cap='(ref:BaMNbrLog)', echo=FALSE, warning = FALSE,  fig.width = 5}
+
+#Représentation graphique
+don %>%
+  dplyr::select(nom_region, parc_social_nombre_de_logements) %>%
+  ggplot(mapping = aes(x = nom_region, y = parc_social_nombre_de_logements)) +
+  geom_half_boxplot(side = "l") +
+  geom_half_violin(side = "r") +
+  stat_summary(fun = "mean", geom = "errorbar",
+               mapping = aes(ymax = ..y.., ymin = ..y..),
+               linetype = "dashed", col = "red", show.legend = TRUE) +
+  labs(
+    x = "Noms des régions",
+    y = "Nombre de logements sociaux"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold",
+                              hjust = 0.5),
+    axis.title.y = element_text(size = 12L,
+                                face = "bold"),
+    axis.title.x = element_text(size = 12L,
+                                face = "bold")
+    )+
+  geom_point(shape = 16)
+```
+
+Aucune des distributions ne semble suivre une loi normale. Nous vérifions cette hypothèse à partir du test de Shapiro.
+
+```{r, echo = FALSE }
+#Normalité
+
+#Création de la base de données
+region1 <- don %>%
+  filter (nom_region == 'Auvergne-Rhone-Alpes') %>%
+  dplyr::select(nom_region,parc_social_nombre_de_logements) %>%
+  drop_na(nom_region,parc_social_nombre_de_logements)
+
+#Tests de normalité
+n11 <- lapply(split(region1$parc_social_nombre_de_logements,region1$nom_region),shapiro.test)
+n11
+n12 <- lapply(split(region1$parc_social_nombre_de_logements,region1$nom_region),ad.test)
+n12
+n13 <- lapply(split(region1$parc_social_nombre_de_logements,region1$nom_region),jarque.test)
+n13 #Pour au moins une sous-population, on rejette l'hypothèse de la normalité de la distribution
+```
+
+On rejette l'hypothèse de normalité pour au moins une sous population. Nous poursuivons en testant l'homoscédasciticitë et l'égalité des medianes.
+
+```{r, echo = FALSE,  warning=FALSE }
+#Egalité des variances
+f1 <- fligner.test(formula = parc_social_nombre_de_logements ~ nom_region, data = don)
+f1 # On accepte l'hypothèse d'homogénéité des variances
+
+#Egalité des médianes
+k1 <- kruskal.test(formula = parc_social_nombre_de_logements ~ nom_region, data = don)
+k1 #Résultat signifiprintif : on rejette l'hypothèse de l'égalité des médianes
+
+
+```
+
+La p-value du test de Fligner-Killeen est inférieure au seuil, on conclut que les variances entre les groupes ne sont pas significativement différentes. On conserve donc l'hypothèse d'homoscédasticité. De plus, le test de Kruskal-Wallis nous permet de conclure que les régions ont des distributions différentes en ce qui concerne le nombre de logements dans les parcs sociaux
+
+```{r, echo=FALSE}
+#Comparaison deux-à-deux
+p1 <- pairwise.wilcox.test(don$parc_social_nombre_de_logements,don$nom_region)
+p1
+```
+
+*Lecture du tableau* : la comparaison entre la région Île-de-France et la région Bretagne a une p-value corrigée de 0,01383, ce qui est inférieure au seuil de 5%, donc il y a une différence significative dans le nombre de logements dans les parcs sociaux entre ces deux régions.
+
+## Densité de population et taux de logements sociaux
+
+Commençons par visualiser nos données.
+
+(ref:tauxLogDensite) Proportion de logements sociaux en fonction de la densité de population par région.
+
+```{r tauxLogDensite,  fig.cap = "(ref:tauxLogDensite)",  echo=FALSE, fig.width = 5}
+
+ggplot(don) +
+  aes(
+    x = densite_de_population_au_km2,
+    y = taux_de_logements_sociaux_en
+  ) +
+  geom_point(shape = "cross", size = 2.25, colour = "#D61010") +
+  labs(
+    x = "Densité de population par km²",
+    y = "Proportion de logements sociaux par département"
+  ) +
+  theme_bw()
+
+```
+
+D'après la figure (\@ref(fig:tauxLogDensite)), il ne semble pas exister de corrélation entre les deux variables.
+
+```{r ,  echo = FALSE,  warning=FALSE }
+
+
+dat <- cbind(don$taux_de_logements_sociaux_en, don$densite_de_population_au_km2)
+# On teste la normalité du couple d’observations
+mvnormtest::mshapiro.test(t(dat))
+
+
+```
+
+Les p-values des deux tests de Shapiro-Wilk sont inférieures au seuil de 5%. Par conséquent, on rejette l'hypothèse nulle selon laquelle les données suivent une distribution normale. Nous ne pouvons donc pas effectuer le teste de Pearson, nous allons donc faire le test de Kendall.
+
+```{r, echo = FALSE,  warning=FALSE }
+
+# correlation avec variable population_de_moins_de_20_ans
+corDensiteLog <- cor.test(don$taux_de_logements_sociaux_en,don$densite_de_population_au_km2, method= 'spearman')
+corDensiteLog
+
+```
+
+La p-value du test est inferieure au seuil de 5%, on accepte donc H1, hypothèse selon laquelle il y a une correlation significative entre les deux variables. on conclut donc qu'il existe une corrélation positive entre le taux de logements sociaux par departements avec la densité de population au $m ^2$, puisque le Rho de Spearman est positif.
+
+## La part des logements sociaux énergivores
+
+Commencons par une analyse descriptive de nos données.
+
+(ref:ageEnergie) Relation entre le taux de logements sociaux énergivores et la proportion de la population ayant moins de 20 ans (à gauche) et la proportion de la population ayant 60 ans et plus (à droite). *Lecture* : Un département dans lequel 30% de la pouplation est âgée de moins de 20 ans possède environ 20% des logements sociaux qui sont énergivores, en 2019, en France.
+
+```{r ageEnergie,  fig.cap = "(ref:ageEnergie)",  echo=FALSE, fig.width = 5.5, message = FALSE, warning=FALSE}
+
+age_energ1 <- ggplot(don) +
+  aes(
+    x = population_de_moins_de_20_ans,
+    y = parc_social_taux_de_logements_energivores_e_f_g_en
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Taux de la population ayant moins de 20 ans (%)",
+    y = "Taux de logements énergivores (%)",
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 8L),
+    axis.title.x = element_text(size = 8L)
+  )
+
+
+age_energ2 <- ggplot(don) +
+  aes(
+    x = population_de_60_ans_et_plus,
+    y = parc_social_taux_de_logements_energivores_e_f_g_en
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Taux de la population ayant plus de 60 ans (%)",
+    y = "Taux de logements énergivores (%)"
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 8L),
+    axis.title.x = element_text(size = 8L)
+  )
+
+plot_grid(age_energ1, age_energ2, ncol = 2, align = "v")
+
+
+```
+
+À partir de ses graphiques, on peut émettre une hypothèse de corrélation entre le taux de logements énergivores et le taux de personnes de moins de 20 ans, mais il est plus difficile d'envisager une corrélation entre le taux de logements énergivores et le taux de personnes de plus de 60 ans. Regardons la normalité des couples, en commencant avec le taux de la population de moins de 20ans.
+
+```{r, echo = FALSE, message = FALSE, warning= FALSE}
+vin_energ <- don %>%
+  drop_na(population_de_moins_de_20_ans,
+          parc_social_taux_de_logements_energivores_e_f_g_en) %>%
+  dplyr::select(population_de_moins_de_20_ans,
+                parc_social_taux_de_logements_energivores_e_f_g_en)
+
+#Test  
+mshapiro.test(t(vin_energ)) #Normalité rejetée
+
+
+```
+
+Le second test, se concentre sur la proportion de la population âgée de 60 ans et plus.
+
+```{r, echo= FALSE, message = FALSE, warning= FALSE}
+#Test de normalité
+#Création de la base de données
+soi_energ <- don %>%
+  drop_na(population_de_60_ans_et_plus,
+          parc_social_taux_de_logements_energivores_e_f_g_en) %>%
+  dplyr::select(population_de_60_ans_et_plus,
+                parc_social_taux_de_logements_energivores_e_f_g_en)
+
+#Test  
+mshapiro.test(t(soi_energ)) #Normalité rejetée
+
+```
+
+Dans les deux cas, les p-values sont inferieures au seuil de 5%, on rejette donc l'hypothèse de normalité. On fait donc un test de Spearman.
+
+```{r, echo = FALSE, message = FALSE, warning= FALSE}
+#Test de corrélation entre les jeunes et l'énergie
+Cj<-cor.test(don$parc_social_taux_de_logements_energivores_e_f_g_en,
+             don$population_de_moins_de_20_ans,
+             method="spearman")
+Cj #p-value = 0,418 -> on accepte l'hypothèse de non-corrélation monotone
+#estimation : +8,4%
+
+
+#Test de corrélation entre vieux et énergie
+Cv<-cor.test(don$parc_social_taux_de_logements_energivores_e_f_g_en,
+             don$population_de_60_ans_et_plus,
+             method="spearman")
+Cv 
+```
+
+Pour les deux variables, on accepte l'hypothèse de non-corrélation monotone.
+
+## Age moyen des parcs sociaux et l'environnement
+
+Nous avons tout d'abord souhaité regarder le nuage de points de nos données (cf figure (\@ref(fig:ageParcEnergie))).
+
+(ref:ageParcEnergie) Relation entre le taux de logements sociaux énergivores (en %) et l'âge moyen du parc social (en année) *Lecture* : En moyenne, les parcs sociaux d'un détpartement sont âgées de 49 ans dans lesquels environ 22% des logements sociaux sont des logements sociaux énergivores.
+
+```{r ageParcEnergie,  fig.cap = "(ref:ageParcEnergie)",  echo=FALSE, fig.width = 5, warning = FALSE, message = FALSE}
+
+ggplot(don) +
+  aes(
+    x = parc_social_age_moyen_du_parc_en_annees,
+    y = parc_social_taux_de_logements_energivores_e_f_g_en
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Age moyen du parc social",
+    y = "Taux de logements énergivores (en %)"
+  ) +
+  theme_classic() +
+  theme(
+    axis.title.y = element_text(size = 10L),
+    axis.title.x = element_text(size = 10L)
+  )
+
+
+```
+
+
+Nous avons ensuite testé la normalité.
+
+```{r, echo = FALSE, message = FALSE, warning= FALSE}
+#Création de la base de données
+parc_energ <- don %>%
+  drop_na(parc_social_age_moyen_du_parc_en_annees,
+          parc_social_taux_de_logements_energivores_e_f_g_en) %>%
+  dplyr::select(parc_social_age_moyen_du_parc_en_annees,
+                parc_social_taux_de_logements_energivores_e_f_g_en)
+
+#Test  
+shapiro.test(t(parc_energ)) #Normalité rejetée
+
+```
+
+
+
+La p-value est inférieure au seuil de significativité, on rejette donc l'hypothèse de normalité. Nous allons donc effectuer le test de Spearman.
+
+
+```{r, echo = FALSE, message = FALSE, warning= FALSE}
+Cm<-cor.test(don$parc_social_taux_de_logements_energivores_e_f_g_en,
+             don$parc_social_age_moyen_du_parc_en_annees,
+             method="spearman")
+Cm
+
+```
+
+La p-value du test de Spearman est inferieure au seuil de 5%, on conclut alors à une corrélation significative entre les deux variables.
+
+# Annexe - partie 3
+
+
+## Solde migratoire et solde naturel
+
+Nous testons d'abord si nos données suivent une distribution normale.
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+#Tests de normalité
+
+# Boucle for pour chaque région
+for (region in unique(don$nom_region)) {
+  # Test de normalité pour le solde naturel
+  solde_nat <- don$dont_contribution_du_solde_naturel_en[don$nom_region == region]
+  jarque_nat <- jarque.test(solde_nat)
+  if (length(solde_nat) < 3) {
+    print(paste("Le nombre d'observations pour le solde naturel dans la région", region, "est insuffisant pour effectuer le test de Shapiro-Wilk."))
+  } else {
+    shapiro_nat <- shapiro.test(solde_nat)}
+  if (length(solde_nat) < 7) {
+      print(paste("Le nombre d'observations pour le solde naturel dans la région", region, "est insuffisant pour effectuer le test de Anderson-Darling."))
+    } else {
+      ad_nat <- ad.test(solde_nat)}
+  # Affichage des résultats pour le solde naturel
+  print(paste("Résultats des tests de normalité pour le solde naturel de la région", region))
+  print("Test de Shapiro-Wilk")
+  print(shapiro_nat)
+  print("Test d'Anderson-Darling")
+  print(ad_nat)
+  print("Test de Jarque-Bera")
+  print(jarque_nat)
+  }
+#La normalité de la distribution est rejettée pour le région Grand Est
+```
+Pour au moins une sous population on rejette l'hypothèse de normalité. On regarde désormais pour la variable du solde migratoire. 
+
+```{r, echo =FALSE, warning=FALSE, message=FALSE}
+  # Test de normalité pour le solde migratoire
+for (region in unique(don$nom_region)) {
+  # Test de normalité pour le solde naturel
+  solde_mig <- don$dont_contribution_du_solde_migratoire_en[don$nom_region == region]
+  jarque_mig <- jarque.test(solde_mig)
+  if (length(solde_mig) < 3) {
+    print(paste("Le nombre d'observations pour le solde migratoire dans la région", region, "est insuffisant pour effectuer le test de Shapiro-Wilk."))
+  } else {
+    shapiro_mig <- shapiro.test(solde_mig)}
+  if (length(solde_mig) < 7) {
+    print(paste("Le nombre d'observations pour le solde migratoire dans la région", region, "est insuffisant pour effectuer le test de Anderson-Darling."))
+  } else {
+    ad_mig <- ad.test(solde_mig)}
+  # Affichage des résultats pour le solde migratoire
+  print(paste("Résultats des tests de normalité pour le solde migratoire de la région", region))
+  print("Test de Shapiro-Wilk")
+  print(shapiro_mig)
+  print("Test d'Anderson-Darling")
+  print(ad_mig)
+  print("Test de Jarque-Bera")
+  print(jarque_mig)
+}
+
+#La normalité de la distribution est rejettée pour le région Grand Est
+```
+Pour au moins une sous population on rejette l'hypothèse de normalité. Regardons désormais l'égalité des variances ainsi que l'égalité des moyennes.
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+#Egalité des variances
+
+bartlett.test(dont_contribution_du_solde_naturel_en ~ nom_region, data = don)
+bartlett.test(dont_contribution_du_solde_migratoire_en ~ nom_region, data = don)
+#Hypothèse de l'égalité des variances rejetée
+
+
+#Egalité des moyennes (en supposant l'inégalité des variances)
+
+# Liste pour stocker les résultats
+results <- list()
+
+# Boucle for pour chaque région
+for (region in unique(don$nom_region)) {
+  # Test d'égalité des moyennes pour la région actuelle
+  test_region <- t.test(don$dont_contribution_du_solde_naturel_en[don$nom_region == region],
+                        don$dont_contribution_du_solde_migratoire_en[don$nom_region == region],
+                        paired = TRUE)
+  # Ajouter les résultats à la liste
+  results[[region]] <- test_region
+}
+
+# Affichage des résultats
+for (region in unique(don$nom_region)) {
+  print(paste("Résultats pour la région", region))
+  print(results[[region]])
+}
+```
+
+
+
+
+## Impact de différence sur taux de logements
+
+Voici d'abord des boîtes à moustaches pour émettre une hypothèse sur la distribution des données.
+
+```{r TauLogParReghion, fig.cap="Distribution du taux de logements sociaux en fonction des régions", message = FALSE, warning = FALSE, echo = FALSE }
+
+dif_tx <- don %>%
+  filter(nom_region %in% c('Auvergne-Rhone-Alpes','Nouvelle-Aquitaine')) %>%
+  dplyr::select(nom_region, taux_de_logements_sociaux_en) %>%
+  ggplot(mapping = aes(x = nom_region, y = taux_de_logements_sociaux_en)) +
+  geom_half_boxplot(side = "l") +
+  geom_half_violin(side = "r") +
+  stat_summary(fun = "mean", geom = "errorbar",
+               mapping = aes(ymax = ..y.., ymin = ..y..),
+               linetype = "dashed", col = "red", show.legend = TRUE) +
+  labs(
+    x = "Noms des régions",
+    y = "Taux de logements sociaux (en %)",
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(hjust = 1),
+    axis.title.y = element_text(size = 12L,),
+    axis.title.x = element_text(size = 12L,)
+  )+
+  geom_point(shape = 16)
+
+dif_tx
+```
+
+On teste alors la normalité et, suite à ce test, dont les résultats sont ci-dessous, on rejette cette hypothèse. On teste ensuite l'égalité des variances. Suite aux résultats, on conserve cette hypothèse. On finit cette étude en comparant les moyennes. On conclut en rejetant l'hypothèse nulle selon laquelle la moyenne des deux groupes est significativement identique.
+
+```{r, echo = FALSE , warning = FALSE, message =FALSE }
+#Test de normalité
+
+  #Création des base de données
+dif <- don %>%
+  dplyr::filter(nom_region %in% c('Auvergne-Rhone-Alpes','Nouvelle-Aquitaine')) %>%
+  dplyr::select(nom_region, taux_de_logements_sociaux_en) %>%
+  drop_na(taux_de_logements_sociaux_en)
+
+  #Tests de normalité
+lapply(split(dif$taux_de_logements_sociaux_en,dif$nom_region),shapiro.test)
+lapply(split(dif$taux_de_logements_sociaux_en,dif$nom_region),ad.test)
+lapply(split(dif$taux_de_logements_sociaux_en,dif$nom_region),jarque.test)
+  #Dans tous les cas, on rejette l'hypothèse de la normalité de la distribution
+
+#Egalité des variances
+var.test(taux_de_logements_sociaux_en ~ nom_region, data = dif) 
+
+#Comparaison des moyennes
+t.test(dif$taux_de_logements_sociaux_en ~ dif$nom_region, var.equal = TRUE)
+```
+\newpage
+
+# Annexe - partie 4 
+
+## Variable salaire confrontée à la variable loyer 
+
+Comme précédemment, on commence par visualiser les données.
+
+
+```{r , echo = FALSE, warning = FALSE, message = FALSE, fig.cap="Relation entre le prix moyen du mètre carré moyen des logements et les salaires nets des régions", fig.width=5, fig.height=3 }
+
+sal_prix <- ggplot(don) +
+  aes(
+    x = Salaire_n_mensuel,
+    y = parc_social_loyer_moyen_en_eur_m2_mois
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Salaires nets moyens des régions",
+    y = "Prix moyen du mètre carré des logements sociaux (en euros)",
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold",
+                              hjust = 0.5),
+    axis.title.y = element_text(size = 8L),
+    axis.title.x = element_text(size = 8L)
+  )
+sal_prix
+```
+
+On peut supposer que lorsque l'une des variables croît, l'autre croît également. Testons la normalité des variables pour adapter le test de corrélation en conséquence.
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+#Test de normalité
+  #Création de la base de données
+sal_prix0 <- don %>%
+  drop_na(Salaire_n_mensuel,parc_social_loyer_moyen_en_eur_m2_mois) %>%
+  dplyr::select(Salaire_n_mensuel,parc_social_loyer_moyen_en_eur_m2_mois)
+
+  #Test  
+mshapiro.test(t(sal_prix0))
+
+```
+On rejette l'hypothèse de normalité, donc nous utilisons le test de corrélation de Spearman pour évaluer la relation entre les deux variables.
+
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+#Test de corrélation
+Cp <-cor.test(don$parc_social_loyer_moyen_en_eur_m2_mois,
+             don$Salaire_n_mensuel,
+             method="spearman")
+Cp 
+```
+Le rho de Spearman (rho) est de 0,57 et la p-value est inférieure au seuil de 5%, ce qui indique que la corrélation est significative. La direction de la corrélation est positive, ce qui signifie qu'il y a une relation croissante entre le prix du loyen mensuel au m² et le salaire mensuel net moyen des régions.
+
+
+## Taux de pauvreté et prix au carré du loyer 
+
+
+On souhaite désormais confronter ces deux variables. Commençons par les visualiser.
+
+```{r PauvreteEtLoyer, echo = FALSE, message = FALSE, warning=FALSE, fig.cap='Relation entre le prix moyen du mètre carré moyen des logements socaiux et le taux de pauvreté des régions '}
+#Nuage de points
+pau_prix <- ggplot(don) +
+  aes(
+    x = taux_de_pauvrete_en,
+    y = parc_social_loyer_moyen_en_eur_m2_mois
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Taux de pauvreté moyen des régions (en %)",
+    y = "Prix moyen du mètre carré des logements sociaux (en euros)",
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold",
+                              hjust = 0.5),
+    axis.title.y = element_text(size = 12L),
+    axis.title.x = element_text(size = 12L)
+  )
+
+pau_prix
+
+
+```
+
+À première vue, il n'existe pas de relation linéaire qui lie ces deux variables. Regardons désormais la distribution du couple de ces variables suit une oi normale avec le test de Shapiro-Wilk.
+
+```{r, echo = FALSE, message=FALSE, warning=FALSE }
+#Test de normalité
+#Création de la base de données
+pau_prix0 <- don %>%
+  drop_na(taux_de_pauvrete_en,parc_social_loyer_moyen_en_eur_m2_mois) %>%
+  dplyr::select(taux_de_pauvrete_en,parc_social_loyer_moyen_en_eur_m2_mois)
+
+#Test  
+mshapiro.test(t(pau_prix0)) 
+```
+D'après ce test, la p-value est inférieure au seuil, ce qui signifie que nous rejetons l'hypothèse nulle de la noramlité de la disctribution du couple. 
+On test donc la corrélation avec le test de Spearman.
+
+```{r , echo = FALSE, message=FALSE, warning=FALSE }
+#Test de corrélation
+Cpa <-cor.test(don$parc_social_loyer_moyen_en_eur_m2_mois,
+              don$taux_de_pauvrete_en,
+              method="spearman")
+Cpa 
+#Estimation : -2,3%
+```
+La p-value est de 0.8177, ce qui est supérieur au seuil de 5%. Par conséquent, nous concluons qu'il n'y a pas de corrélation statistiquement significative entre ces deux variables. On conclut donc que le prix du loyer d'un $m ^2$ ne dépend pas du salaire moyen de la région.
+
+## Le chômage confronté au prix du $m ^2$ des logements sociaux
+
+Comme à chaque fois, commencons par un nuage de points. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+#Nuage de points
+cho_prix <- ggplot(don) +
+  aes(
+    x = taux_de_chomage_au_t4_en,
+    y = parc_social_loyer_moyen_en_eur_m2_mois
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Taux de chômage moyen au 4e trimestre des régions (en %)",
+    y = "Prix moyen du mètre carré des logements sociaux (en euros)",
+    title = "Relation entre le prix moyen du mètre carré moyen des logements et le taux de chômage des régions"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold",
+                              hjust = 0.5),
+    axis.title.y = element_text(size = 12L,
+                                face = "bold"),
+    axis.title.x = element_text(size = 12L,
+                                face = "bold")
+  )
+
+cho_prix
+
+#Test de normalité
+#Création de la base de données
+cho_prix0 <- don %>%
+  drop_na(taux_de_chomage_au_t4_en,parc_social_loyer_moyen_en_eur_m2_mois) %>%
+  dplyr::select(taux_de_chomage_au_t4_en,parc_social_loyer_moyen_en_eur_m2_mois)
+
+#Test  
+mshapiro.test(t(cho_prix0)) #On rejette l'hypothèse selon laquelle
+#le couple ne suit pas une loi normale
+
+#Test de corrélation
+Cc <-cor.test(don$parc_social_loyer_moyen_en_eur_m2_mois,
+               don$taux_de_chomage_au_t4_en,
+               method="spearman")
+Cc #On rejette l'hypothèse de la corrélation nulle monotone
+#Estimation : 11,3%
+```
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, fig.cap="Relation entre le prix moyen du mètre carré moyen des logements et le taux de chômage des régions"}
+#Nuage de points
+cho_prix <- ggplot(don) +
+  aes(
+    x = taux_de_chomage_au_t4_en,
+    y = parc_social_loyer_moyen_en_eur_m2_mois
+  ) +
+  geom_point(shape = "circle", size = 2, colour = "#B22222") +
+  labs(
+    x = "Taux de chômage moyen au 4e trimestre des régions (en %)",
+    y = "Prix moyen du mètre carré des logements sociaux (en euros)",
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(face = "bold",
+                              hjust = 0.5),
+    axis.title.y = element_text(size = 8L),
+    axis.title.x = element_text(size = 8L)
+  )
+
+cho_prix
+
+```
+
+Le nuage de points ne nous permet pas de supposer une éventuelle corrélation linéaire entre ces deux variables. Nous avons donc testé la normalité de la paire de variables et nous avons dû rejeter cette hypothèse. Nous avons donc effectué un test de corrélation de Spearman.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+
+#Test de normalité
+#Création de la base de données
+cho_prix0 <- don %>%
+  drop_na(taux_de_chomage_au_t4_en,parc_social_loyer_moyen_en_eur_m2_mois) %>%
+  dplyr::select(taux_de_chomage_au_t4_en,parc_social_loyer_moyen_en_eur_m2_mois)
+
+#Test  
+mshapiro.test(t(cho_prix0))
+
+#Test de corrélation
+Cc <-cor.test(don$parc_social_loyer_moyen_en_eur_m2_mois,
+               don$taux_de_chomage_au_t4_en,
+               method="spearman")
+Cc #On rejette l'hypothèse de la corrélation nulle monotone
+#Estimation : 11,3%
+```
+
+
+La p-value du test de Spearman indique une corrélation non significative. On ne peut donc pas affirmer qu'il existe un lien significatif entre ses deux variables, alors aucune relation d'indépendance n'est à affirmer.
+
+\newpage
+\listoffigures
+
+\begin{itemize}
+    \item Le premier ;
+    \item Le deuxième.
+\end{itemize}
+

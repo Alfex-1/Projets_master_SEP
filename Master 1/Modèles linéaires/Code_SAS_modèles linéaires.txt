@@ -1,0 +1,108 @@
+/* Bibliothèque */
+%let accueil = /home/u62439365 ;
+%let Projet_final = &accueil./Projet_final ;
+
+/* Appel de la macro variable accueil : &accueil. */
+FILENAME Data "&Projet_final./Data.csv";
+
+/* Importer la base de données */
+proc import datafile=Data out=Don dbms=csv replace;
+	delimiter=';';
+run;
+
+/* Pour connaître la nature des variables */
+proc contents data=Don;
+run;
+
+/* Test d'indépendance du Khi-2 */
+proc freq DATA=Don;
+	TABLE PIB*Inflation / chisq expected missing;
+run;
+
+/* Remarque : que l'on mette PIB ou une autre variable, la p-value ne change
+quasiement pas */
+/* Statistiques descriptives */
+proc univariate data=Don;
+	var PIB PIBh Investissement Inflation Volume Consommation Consommationh 
+		Emissions;
+	output out=quartiles pctlpts=25 75 pctlpre=Q_;
+run;
+
+/* Suppression des données manquantes */
+DATA NewDon;
+	SET Don;
+
+	IF Investissement=. THEN
+		DELETE;
+RUN;
+
+/* Coorélation entre les variables */
+proc corr data=NewDon;
+	var PIB PIBh Investissement Inflation Volume Consommation Consommationh 
+		Emissions;
+	title 'Corrélation entre les variables';
+run;
+
+/* Régression Consommation-PIB+Inflation */
+Proc REG data=Don;
+	model Consommation=PIB Inflation;
+	run;
+
+	/* Régression Consommation/hab-PIB/hab+Inflation */
+Proc REG data=Don;
+	model Consommationh=PIBh Inflation;
+	run;
+
+	/* Régression Consommation-Indicateurs macroéconomiques avec test d'homoscédasticité
+	et test d'indépendance (Durbin-Watson) */
+Proc REG data=Don;
+	model Consommation=PIB Investissement Inflation Volume / SPEC DW;
+	run;
+
+	/* Régression Emissions-Indicateurs macroéconomiques avec test d'homoscédasticité
+	et test d'indépendance (Durbin-Watson) */
+Proc REG data=Don;
+	model Emissions=PIB Investissement Inflation Volume/ SPEC DW;
+	run;
+
+	/* Distance de Cook */
+proc reg data=NewDon;
+	;
+	LOG : model Consommation=PIB Investissement Inflation Volume /R influence;
+	run;
+	output out=influence H=levier COOKD=dcook STUDENT=rsi RSTUDENT=rse;
+quit;
+
+/* VIF relation consommation-PIB+Inflation */
+proc reg data=Don;
+	LOG : model Consommation=PIB Inflation /tol vif collinoint;
+	run;
+quit;
+
+/* VIF relation consommation/hab-PIB/hab+Inflation */
+proc reg data=Don;
+	LOG : model Consommationh=PIBh Inflation /tol vif collinoint;
+	run;
+quit;
+
+/* VIF relation consommation-indicateurs */
+proc reg data=Don;
+	LOG : model Consommation=PIB Investissement Inflation Volume /tol vif 
+		collinoint;
+	run;
+quit;
+
+/* VIF relation émissions-indicateurs */
+proc reg data=Don;
+	LOG : model Emissions=PIB Investissement Inflation Volume /tol vif collinoint;
+	run;
+quit;
+
+/* Test d'homoscédascité */
+proc reg data=NewDon;
+	LOG : model Consommation=PIB Investissement Inflation Volume / SPEC;
+	run;
+
+proc reg data=Don;
+	LOG : model Emissions=PIB Investissement Inflation Volume / SPEC;
+	run;
