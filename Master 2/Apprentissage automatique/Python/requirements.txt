@@ -1,0 +1,15 @@
+pyclustering
+numpy 
+matplotlib
+manhattan_distances
+kmedoids
+distance_metric
+type_metric
+cluster_visualizer
+datasets
+KMeans
+pandas
+Axes3D
+datasets
+PCA
+StandardScaler

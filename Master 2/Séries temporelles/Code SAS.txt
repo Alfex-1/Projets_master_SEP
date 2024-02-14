@@ -1,0 +1,232 @@
+/* Bibliothèque */
+%let accueil = /home/u62*****5/Séries_temp ;
+%let Projet = &accueil./Projet ;
+
+/* Appel de la macro variable accueil : &accueil. */
+FILENAME Data "&Projet./valeurs_mensuelles.csv";
+
+/* Importer la base de données */
+proc import datafile=Data out=data dbms=csv replace;
+	delimiter=';';
+run;
+
+data Data;
+	set Data;
+	format Date MMYYD.;
+run;
+
+proc sort data=Data;
+	by Date;
+run;
+
+ods rtf file="/home/u62439365/Séries_temp/Projet/Graphiques.rtf" 
+	style=Journal1a startpage=no;
+
+/* Boite à moustache */
+proc sgplot data=Data;
+	hbox Nombre;
+run;
+
+/* Avoir les valeurs extrêmes */
+proc sort data=Data out=SortedData;
+   by descending Nombre;
+run;
+proc print data=SortedData(obs=19);
+run;
+
+/* Trajectoires  */
+proc sgplot data=Data;
+	series x=Date y=Nombre / markers markerattrs=(color=grey symbol='cercle') 
+		lineattrs=(color=black) legendlabel="Série originale";
+	yaxis label="Nombre d'entreprises créées";
+run;
+
+/* Tendance et cvs */
+/* Proc X11  */
+proc x11 data=Data noprint;
+	monthly date=Date additive;
+	var Nombre;
+	output out=sortie b1=serie d10=season d11=cvs d12=trend d13=error;
+run;
+
+/* sorties Proc X11  */
+proc sgplot data=sortie;
+	series x=Date y=serie / markerattrs=(color=grey) lineattrs=(color=black) 
+		legendlabel="Série originale";
+	series x=Date y=cvs / markers markerattrs=(color=blue symbol='asterisk') 
+		lineattrs=(color=blue) legendlabel="Série désaisonnalisée";
+	yaxis label="Nombre d'entreprises créées";
+run;
+
+proc sgplot data=sortie;
+	series x=Date y=serie / markerattrs=(color=grey) lineattrs=(color=black) 
+		legendlabel="Série originale";
+	series x=Date y=trend / markers markerattrs=(color=red symbol='asterisk') 
+		lineattrs=(color=red) legendlabel="Tendance ";
+	yaxis label="Nombre d'entreprises créées";
+run;
+
+/* Test de Dickey-Fuller*/
+/*Pour visualiser la saisonnalité*/
+proc spectra data=Data out=spectre_Data p s;
+	var Nombre;
+	weight parzen;
+
+	/* noyau de parzen */
+run;
+
+proc sgplot data=spectre_Data;
+	series x=Period y=s_01 / markers markerattrs=(color=black symbol=circlefilled);
+	yaxis label='Périodogramme';
+	xaxis values=(2 to 5 by 1);
+run;
+
+/*Il y a un pic en 3 : on en déduit qu'il y a une période égale à 3*/
+/*************************/
+/****  Modélisation  ****/
+/***********************/
+/*on observe le graphique et les corrélogrammes*/
+proc arima data=Data;
+	identify var=Nombre stationarity=(adf=6);
+	run;
+quit;
+
+/*La sortie montre clairement un phénomene saisonnier */
+/* De plus les corrélations (ACF) décroissent lentement, alors la série n'est pas stationnaire */
+/* On doit différencier  */
+
+/* Avec 1 différenciation non-saisonnière et 1 différenciation saisonnière */
+proc arima data=Data;
+	identify var=Nombre(1 1) stationarity=(pp=6);
+	run;
+quit;
+
+/* Avec 1 différenciation non-saisonnière et 2 différenciations saisonnières */
+proc arima data=Data plots=series(ACF);
+	identify var=Nombre(1 1 1);
+	run;
+quit;
+
+/* Avec 1 différenciation non-saisonnière et 3 différenciations saisonnières */
+proc arima data=Data plots=series(ACF);
+	identify var=Nombre(1 1 1 1);
+	run;
+quit;
+
+/* Avec un D=1 on acpte encore la saisonnlité, mais avec D=2 jusqu'à 3 ne change rien*/
+/* De plus le test nous montre qu'une seule différenciation suffit pour rendre la série stationnaire */
+/* On conclue que d=1 et D=1  */
+/* Choix de p,q, P, Q */
+proc arima data=Data plots=none;
+	identify var=Nombre(1 1) nlag=36 scan esacf p=(0:17) q=(0:17) minic;
+	run;
+quit;
+
+/* En prenant en compte la différenciation et selon le BIC, le meilleur modèle est ARIMA(16,1,0) */
+/* Donc on va tester SARIMA(16,1,1)(1,1,1) */
+/* Estimation des coefficients */
+proc arima data=WORK.DATA plots=none;
+	identify var=Nombre(1 1) outcov=work.outcov0002;
+	estimate p=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) (1) q=(1) (1) method=ML;
+	run;
+quit;
+
+/* Décorrélation des résidus refusée donc on teste SARIMA(16,1,1)(2,1,0) */
+proc arima data=WORK.DATA;
+	identify var=Nombre(1 1 1 1) outcov=work.outcov0002;
+	estimate p=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) (2) q=(1) noint method=ML;
+	forecast lead=0 interval=month id=date out=prev_Data;
+	run;
+quit;
+
+/* Validation du modèle */
+/* Exécuter le test de Shapiro-Wilk sur les résidus */
+proc univariate data=prev_Data normal;
+	var Residual;
+run;
+
+/* Décorrélation des résidus acceptée
++ normalité des résidus acceptée
+donc on garde ce modèle */
+/*************************/
+/****  Prévisions ****/
+/***********************/
+/* Vérification du modèle */
+data prev_1;
+	set prev_Data;
+	debut='01jan2009'd;
+
+	/*date où on fait démarrer les prev*/
+	fin='01dec2021'd;
+
+	/*date où on fait arreter les prev*/
+	if date lt debut or date gt fin then
+		do;
+			forecast=.;
+			l95=.;
+			u95=.;
+		end;
+run;
+
+/* Comparaison Modèle-prévision */
+proc sgplot data=prev_1;
+	series x=Date y=Nombre / markerattrs=(color=black) lineattrs=(color=black) 
+		legendlabel="Série originale";
+	series x=Date y=forecast / markerattrs=(color=red) lineattrs=(color=red) 
+		legendlabel="Prévision";
+	yaxis label="Nombre d'entreprises créées";
+run;
+
+/* Le modèle semble convenir */
+/* Prévision avec région de confiance */
+ods noproctitle;
+ods graphics / imagemap=on;
+proc arima data=Data plots=forecast(FORECASTS) out=work.out0002;
+	identify var=Nombre (1 1) outcov=work.outcov0002;
+	estimate p=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) (2) q=(1) method=ML
+	outest=work.outest0002 outstat=work.outstat0002 outmodel=work.outmodel0002;
+	forecast id=Date lead=24 interval=month id=date out=prev_Data;
+	run;
+quit;
+
+data prev_2;
+	/* On ne garde que les valeurs de prédiction du futur */
+	set prev_Data;
+	debut='01dec2021'd;
+
+	/*date où on fait démarrer les prev*/
+	if date lt debut then
+		do;
+			forecast=.;
+			l95=.;
+			u95=.;
+		end;
+run;
+
+/* Visualisation de la prévision future */
+proc sgplot data=prev_2;
+	series x=Date y=Nombre / markerattrs=(color=black) lineattrs=(color=black) 
+		legendlabel="Série originale";
+	series x=Date y=forecast / markerattrs=(color=blue) lineattrs=(color=blue) 
+		legendlabel="Prévision";
+	series x=date y=l95 / markerattrs=(color=green) lineattrs=(color=green) 
+		legendlabel="Borne inférieure";
+	series x=Date y=u95 / markerattrs=(color=red) lineattrs=(color=red) 
+		legendlabel="Borne supérieure";
+	yaxis label="Nombre d'entreprises créées";
+run;
+
+/* Pour obtenir les mériques RMSE et MAE */
+data work.metrics;
+	set work.prev_Data;
+	RMSE=(Nombre - FORECAST)**2;
+	MAE=abs(Nombre - FORECAST);
+run;
+
+proc means data=work.METRICS mean;
+	var RMSE MAE;
+run;
+
+/* MAE =~ 195.1
+RMSE == sqrt(64279.29) =~ 253.5 */
+ods rtf close;
