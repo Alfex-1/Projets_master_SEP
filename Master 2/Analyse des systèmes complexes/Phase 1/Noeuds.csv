@@ -1,0 +1,32 @@
+ID;Label;Place dans le système
+1;Terre;Approvissionnement
+2;Agriculteurs;Classe productive
+3;Transformateurs agro-alimentaire;Classe productive
+4;Ingénieurs agronome;Classe stérile
+5;Producteurs de fruits;Classe productive
+6;Ingénieurs en hydrophonie;Classe stérile
+7;Techniciens en recyclage des déchets organiques;Classe stérile
+8;Ingénieurs en recyclage de l'eau;Classe stérile
+9;Ingénieurs en abeilles robotiques;Classe stérile
+10;Cultivateurs hydroponique/aéroponique;Classe productive
+11;Gestionnaires de produits alimentaires;Classe stérile
+12;Techniciens en purification d'eau;Classe stérile
+13;Experts en gestion des eaux usées;Classe stérile
+14;Hydrologues;Classe stérile
+15;Gestionnaires de l'environnement intérieur;Classe stérile
+16;Éleveurs d'insectes comestibles;Classe productive
+17;Médecins/infirmiers;Classe stérile
+18;Ingénieurs/chercheurs en aérospatial;Classe stérile
+19;Foreurs;Classe stérile
+20;Pédaleurs/producteurs d'énergie;Classe stérile
+21;Ingénieurs/chercheurs énergétiques;Classe stérile
+22;Extracteurs d'eau;Classe productive
+23;Biotechniciens;Classe stérile
+24;Militaires du rang;Propriétaires
+25;Sous-officiers;Propriétaires
+26;Officiers;Propriétaires
+27;Chefs militaire;Propriétaires
+28;Taupes;Classe stérile
+29;Instituteurs;Classe stérile
+30;Nourrices;Classe stérile
+31;Administrateurs;Propriétaires
